@@ -27,7 +27,6 @@ def download_file(url: str, target: Path):
         stream=True,
         timeout=180,
     ) as response:
-
         response.raise_for_status()
 
         with target.open("wb") as output:
@@ -38,7 +37,7 @@ def download_file(url: str, target: Path):
                     output.write(chunk)
 
 
-def transcribe(video_url: str):
+def transcribe_video(video_url: str):
     work = Path(
         tempfile.mkdtemp(
             prefix="igyt_",
@@ -47,11 +46,11 @@ def transcribe(video_url: str):
     )
 
     try:
-        input_file = work / "input.mp4"
+        video_file = work / "input.mp4"
 
         download_file(
             video_url,
-            input_file,
+            video_file,
         )
 
         model = WhisperModel(
@@ -61,7 +60,7 @@ def transcribe(video_url: str):
         )
 
         segments_iter, info = model.transcribe(
-            str(input_file),
+            str(video_file),
             beam_size=5,
             vad_filter=True,
             word_timestamps=True,
@@ -81,14 +80,14 @@ def transcribe(video_url: str):
 
             if segment.words:
                 for word in segment.words:
-                    data = {
+                    word_data = {
                         "word": word.word,
                         "start": word.start,
                         "end": word.end,
                     }
 
-                    segment_words.append(data)
-                    words.append(data)
+                    segment_words.append(word_data)
+                    words.append(word_data)
 
             segments.append({
                 "start": segment.start,
@@ -119,12 +118,18 @@ def transcribe(video_url: str):
 
 if __name__ == "__main__":
     import sys
+    import json
 
     if len(sys.argv) != 2:
         raise SystemExit(
             "Usage: python transcribe_worker.py VIDEO_URL"
         )
 
-    result = transcribe(sys.argv[1])
+    result = transcribe_video(sys.argv[1])
 
-    print(result["transcript"])
+    print(
+        json.dumps(
+            result,
+            ensure_ascii=False
+        )
+    )
